@@ -67,80 +67,48 @@ class WordMakerAI():
     Do not assume anything about the lengths of the words. You will be tested on dictionaries with extremely long words.
     """
     def __init__(self, words_file: str, verbose=False):
-        # This initializer should read in the words into any data structures you see fit
-        # The input format is a file of words separated by newlines
-        # Use open() to open the file, and remember to split up words by word length!
-
-        # Feel free to use this parameter to toggle extra print statments. Verbose mode can be turned on via the --verbose flag.
         self.verbose = verbose
-
-        # Use this code if you like.
-        """
+        self.words_by_length: dict[int, list[str]] = defaultdict(list)
         with open(words_file) as file_obj:
             for line in file_obj:
                 word = line.strip()
-                # Use word
-        """
-
-        pass # TODO: implement this
+                if len(word) > 0:
+                    self.words_by_length[len(word)].append(word)
+        self.active_words: list[str] = []
 
     def reset(self, word_length: int) -> None:
-        # This function starts a new game with a word length of `word_length`. This will always be called before guess() or get_valid_word() are called.
-        # You should try to make this function should be O(1). That is, you shouldn't have to process over the entire dictionary here (find somewhere else to preprocess it)
-        # Your AI code should not call input() or print().
-
-        pass # TODO: implement this
+        # This function starts a new game with a word length of `word_length`.
+        self.active_words = list(self.words_by_length.get(word_length, []))
 
     def get_valid_word(self) -> str:
         # Get a valid word in the active dictionary, to return when you lose
-        # Can return any word, as long as it satisfies the previous guesses
-
-        pass # TODO: implement this
+        return self.active_words[0]
 
     def get_amount_of_valid_words(self) -> int:
-        # This function gets the total amount of possible words "remaining" (i.e., that satisfy all the guesses since self.reset was last called)
-        # This should also be O(1)
-        # Note: This is used extensively in the autograder! Be sure to verify that this function works
-        # via the provided test cases.
-        # You can see this number by running with the verbose flag, i.e. `python3 evil_hangman.py --verbose`
-
-        pass # TODO: implement this
+        # This function gets the total amount of possible words "remaining"
+        return len(self.active_words)
 
     def get_letter_positions_in_word(self, word: str, guess_letter: str) -> tuple[int, ...]:
-        # This function should return the positions of guess_letter in word. For instance:
-        #  get_letter_positions_in_word("hello", "l") should return (2, 3). The list should
-        #  be sorted ascending and 0-indexed.
-        # You can assume that word is lowercase with at least length 1 and guess_letter has exactly length 1 and is a lowercase a-z letter.
-
-        # Note: to convert from a list to a tuple, call tuple() on the list. For instance:
+        # Returns the positions of guess_letter in word, sorted ascending, 0-indexed.
         result = []
-        # TODO: add letter positions to result
+        idx = word.find(guess_letter)
+        while idx != -1:
+            result.append(idx)
+            idx = word.find(guess_letter, idx + 1)
         return tuple(result)
-        
 
     def guess(self, guess_letter) -> list[int]:
-        # This is the meat of the project. This function is called by the GameManager.
-        # Using get_letter_positions_in_word, this function should sort all remaining words
-        #  into their respective letter families. Then, it should pick the largest family,
-        #  resolving ties by picking the set with fewer guess_letters. If the amount of
-        #  guess_letter's are equal, then either set can be picked to become the new active
-        #  dictionary.
-        # This function should return the positions of where a guess_letter should appear.
-        # For instance, if you want an "e" to appear in positions 0 and 2, return [0, 2].
-        # Make sure the list is sorted.
+        # Sort all remaining words into families by where guess_letter appears
+        families: dict[tuple[int, ...], list[str]] = defaultdict(list)
+        for word in self.active_words:
+            key = self.get_letter_positions_in_word(word, guess_letter)
+            families[key].append(word)
 
-        # Here is an example run of guess():
-        #  If the guess is "a" and the words left are ["ah", "ai", "bo"], then we should return [0], because
-        #  we are picking the family of words with an "a" in the 0th position. If this function decides that the biggest family
-        #  has no a's, then we would have returned [].
+        # Pick the largest family; ties broken by fewest occurrences of guess_letter
+        best_key = max(
+            families.keys(),
+            key=lambda k: (len(families[k]), -len(k))
+        )
 
-        # In the case of a tie (multiple families have the same amount of words), we should pick the set of words with fewer guess_letter's.
-        #  That is, if the guess is "a" and the words left are ["ah", "hi"], we should return [] (picking the set ["hi"]), 
-        #  since ["hi"] and ["ah"] are equal length and "hi" has fewer a's than "ah".
-        # Again, if both sets have an equal number of guess_letter's, then it is ok to pick either.
-        #  For example, if the guess is "a" and the words left are ["aha", "haa"], you can return either [0, 2] or [1, 2].
-
-        # The order of the returned list should be sorted. You can assume that 'guess_letter' has not been seen yet since the last call to self.reset(),
-        #  and that guess_letter has len of 1 and is a lowercase a-z letter.
-        
-        pass # TODO: implement this
+        self.active_words = families[best_key]
+        return sorted(best_key)
